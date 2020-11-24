@@ -16,7 +16,7 @@ echo "\nCreating  hostname.\n"
 echo "arch" > /etc/hostname
 
 echo "\nSetting up initial ramdisk.\n"
-DO_HOOKS
+$DO_HOOKS
 
 echo "Configuring bootloader."
 INSTALL_BOOTLOADER

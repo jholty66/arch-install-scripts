@@ -32,7 +32,7 @@ installation.
 *How to use the scripts*
 
 Modify =custom.sh=, to suit hardware and customization preferences. Read
-all of the scripts (200 lines of code) before installing as they are
+all of the scripts (100 lines of code) before installing as they are
 only used on my personal computers. cd into the cloned repository. Call:
 
 =sh install.sh=

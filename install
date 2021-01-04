@@ -4,12 +4,12 @@ source ./custom.sh
 case "$FS" in
 	zfs) FS_DEPS="zfs-dkms"
 		HOOK_OPTS="zfs"
-		KERNEL_PARAMS="dozfs zfs=zroot/arch rw";;
+		KERNEL_PARAMS="dozfs zfs=zroot/arch rw"
 		ZFS_SERVICES() {
 			systemctl preset zfs-import-cache zfs-import-scan zfs-mount zfs-share zfs-zed zfs.target
 		}
 		RAMDISK_POST_HOOK="$RAMDISK_PRE_HOOK ZFS_SERVICES;"
-		PACKSTRAP_PKGS="$PACKSTRAP_PKGS zfs-dkms"
+		PACKSTRAP_PKGS="$PACKSTRAP_PKGS zfs-dkms" ;;
 esac
 case "$BOOTLOADER" in
 	systemd-boot) INSTALL_BOOTLOADER () {
@@ -61,7 +61,15 @@ all(){
 while true; do
 	echo "$1"
 	case "$1" in
-		--help) cat README&&exit;;
+		--help) echo 'Available options, if using multiple options, run in the followingo order:
+--bootstrap	# Prepare for chroot.
+--timezone
+--locale
+--hostname
+---ramdisk	# Install initramfs.
+--bootloader	# Install bootloader.
+--services	# Enable init services.
+--all		# Call all options in this order.'&&exit;;
 		--bootstrap) bootstrap && shfit ;;
 		--timezone) timezone && shfit ;;
 		--locale) locale && shfit ;;

@@ -5,6 +5,7 @@ rm='mm -v'
 grep='grep --colour=auto'
 # Veriables.
 BOOTLOADER="systemd" # "systemd"
+EDITOR="nano"
 EFI_DISK="/dev/nvme0n1" # Disk name.
 EFI_PARTITION="p1" # Partition.
 FS="zfs"

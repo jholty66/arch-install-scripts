@@ -22,9 +22,7 @@ options	${KERNEL_PARAMS}" > /boot/loader/entries/arch.conf
                     }
 esac
 bootstrap() {
-	GITDIR=$(pwd)
-	alias cp="cp -v"
-	time pacstrap /mnt/ base base-devel linux linux-firmware man man-db man-pages texinfo $PACKSTRAP_PKGS
+	time pacstrap /mnt/ base base-devel linux linux-firmware man man-db man-pages texinfo $PACKSTRAP_PKGS $EDITOR
 	genfstab -U -p /mnt/ >> /mnt//etc/fstab;cat /mnt/etc/fstab
 }
 timezone() {
@@ -32,7 +30,7 @@ timezone() {
 	hwclock --systohc
 }
 locale() {
-	emacs /etc/locale.gen
+	# sed to change locale
 	locale-gen
 	echo "LANG=en_GB.UTF-8" > /etc/locale.conf;cat /etc/locale.conf
 	echo "KEYMAP=uk" > /etc/vconsole.conf;cat/etc/vconsole.conf
@@ -42,8 +40,9 @@ hostname() {
 }
 ramdisk() {
 	cp /etc/mkinitcpio.conf{,.bak};cp /etc/mkinitcpio.conf{,.def}
-	sedi -i "s/^HOOKS=.*$/HOOKS=(${RAMDISK_OPTS})/" /etc/mkinitcpio.conf
+	sed -i "s/^HOOKS=.*$/HOOKS=(${RAMDISK_OPTS})/" /etc/mkinitcpio.conf
 	eval $RAMDISK_PRE_HOOK
+	cat /etc/mkinitcpio.conf
 	mkinitcpio -P
 	eval $RAMDISK_POST_HOOK
 }
@@ -62,6 +61,7 @@ all(){
 while true; do
 	echo "$1"
 	case "$1" in
+		--help) cat README&&exit;;
 		--bootstrap) bootstrap && shfit ;;
 		--timezone) timezone && shfit ;;
 		--locale) locale && shfit ;;

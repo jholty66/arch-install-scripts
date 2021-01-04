@@ -1,0 +1,12 @@
+Personal Arch install scripts
+
+The scripts perform a minimal install of Arch Linux for UEFI bios, ZFS file syst
+em and System-D boot bootloader.  They do not partion, format or mount disks, 
+that is done manually.
+
+To use, clone this repositofy into the the root users home folder of the 
+installed system, '/mnt/root/' by default. Read all files and customize the 
+installation through 'custom.sh'. './install.sh --all' to install
+automaticcaly. or use a mix one of the options listed in  './install --help'.
+
+Note, if using ZFS, make sure to use an ISO that supports the ZFS filesystem.

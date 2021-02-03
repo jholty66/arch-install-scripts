@@ -1,85 +1,82 @@
 #!/bin/sh
 set -e
 source ./custom.sh
-case "$FS" in
-	zfs) FS_DEPS="zfs-dkms"
-		HOOK_OPTS="zfs"
-		KERNEL_PARAMS="dozfs zfs=zroot/arch rw"
-		ZFS_SERVICES() {
-			systemctl preset zfs-import-cache zfs-import-scan zfs-mount zfs-share zfs-zed zfs.target
-		}
-		RAMDISK_POST_HOOK="$RAMDISK_PRE_HOOK ZFS_SERVICES;"
-		PACKSTRAP_PKGS="$PACKSTRAP_PKGS zfs-dkms" ;;
-esac
-case "$BOOTLOADER" in
-	systemd-boot) INSTALL_BOOTLOADER () {
-			bootctl --path=/boot install
-			echo "title	Arch Linux
-linux	/vmlinuz-linux
-initrd	/initramfs-linux.img
-options	${KERNEL_PARAMS}" > /boot/loader/entries/arch.conf
-			cat /boot/loader/entries/arch.conf
-                    }
-esac
-bootstrap() {
-	time pacstrap /mnt/ base base-devel linux linux-firmware man man-db man-pages texinfo $PACKSTRAP_PKGS $EDITOR
-	genfstab -U -p /mnt/ >> /mnt//etc/fstab;cat /mnt/etc/fstab
-}
-timezone() {
-	ln -sf /usr/share/zoneinfo/Region/City /etc/localtime
-	hwclock --systohc
-}
-locale() {
-	# sed to change locale
-	locale-gen
-	echo "LANG=en_GB.UTF-8" > /etc/locale.conf;cat /etc/locale.conf
-	echo "KEYMAP=uk" > /etc/vconsole.conf;cat/etc/vconsole.conf
-}
-hostname() {
-	echo "arch" > /etc/hostname;cat/etc/hostname
-}
-ramdisk() {
-	cp /etc/mkinitcpio.conf{,.bak};cp /etc/mkinitcpio.conf{,.def}
-	sed -i "s/^HOOKS=.*$/HOOKS=(${RAMDISK_OPTS})/" /etc/mkinitcpio.conf
-	eval $RAMDISK_PRE_HOOK
-	cat /etc/mkinitcpio.conf
-	mkinitcpio -P
-	eval $RAMDISK_POST_HOOK
-}
-bootloader() {
-	echo "Configuring bootloader."
-	INSTALL_BOOTLOADER
-}
-services() {
-	pacman -S $SERVICES
-	systemctl enable $SERVICES
-}
-all(){
-	bootstrap
-	echo 'set -e;source /root/arch-install-scripts/install.sh;timezone&&locale&&hostname&&ramdisk&&bootloader&&services' | arch-chroot /mnt/ /bin/bash -s
-}
+
+ah() { eval "$1=\"\$$1 $2;\""; }
+ap() { eval "$1=\"\$$1 $2\""; }
+
+[ "$FS" == "zfs" ] && { FS_DEPS="zfs-dkms"
+ ap HOOK_OPTS "zfs"
+ KERNEL_PARAMS="dozfs=cache zfs=$FS_ROOT rw"
+ ZFS_SERVICES() { systemctl preset zfs-import-cache zfs-import-scan zfs-mount\
+  zfs-share zfs-zed zfs.target; }
+ ZFS_CACHE() { D=/etc/zfs/
+  [ -d $D ] || echo "Could not create $D."; exit 0
+  [ -d /mnt$D ] || mkdir /mnt$D
+  cp {,/mnt}${D}zpool.cache; }
+ ZFS_FSTAB() { sed -i 's/${node}\(\/etc\/fstab\)/\1/' /usr/lib/initcpio/hooks/zfs
+  F=/etc/mkinitcpio.conf; cp $F{,.def}
+  sed -i 's/^FILES=.*$/FILES="\/etc\/fstab"/' $F; }
+ ah RAMDISK_PRE_HOOK ZFS_FSTAB
+ ah BOOTSTRAP_POST_HOOK ZFS_CACHE
+ ah RAMDISK_POST_HOOK ZFS_SERVICES
+ ap PACKSTRAP_PKGS "zfs-dkms linux-headers"; }
+
+bootstrap() { eval $BOOTSTRAP_PRE_HOOK
+ pacstrap /mnt/ base base-devel linux linux-firmware man man-db man-pages\
+  archlinux-keyring texinfo $PACKSTRAP_PKGS $EDITOR
+ cd /mnt/etc/; [ -d fstab ] && cp fstab{,~}; genfstab -U /mnt/ > fstab
+ eval $BOOTSTRAP_POST_HOOK; }
+
+timezone() { ln -sf /usr/share/zoneinfo/Region/City /etc/localtime; hwclock --systohc; }
+
+locale() { sed -i "s/#\($LOCALE.*\)/\1/g" /etc/locale.gen; locale-gen
+ echo "LANG=$LOCALE" > /etc/locale.conf; echo "KEYMAP=uk" > /etc/vconsole.conf
+ echo "$HOSTNAME" > /etc/hostname; }
+
+ramdisk() { F=/etc/mkinitcpio.conf; cp $F{,~}; [ -f $F.def ] || cp $F{,.def}
+ eval $RAMDISK_PRE_HOOK
+ sed -i "s/^HOOKS=(.*$/HOOKS=(${RAMDISK_OPTS})/" $F
+ for H in "$HOOK_OPTS"; do
+  grep '^HOOKS=(' $F | grep $H > /dev/null || sed -i "s/\(^HOOKS=(.*\))/\1 ${H})/" $F
+ done
+ mkinitcpio -P
+ eval $RAMDISK_POST_HOOK; }
+
+bootloader() { bootctl --path=/boot install
+ echo "title Arch Linux
+linux vmlinuz-linux
+initrd initramfs-linux.img
+options ${KERNEL_PARAMS}" > /boot/loader/entries/arch.conf; }
+
+services() { pacman -S $SERVICES; systemctl enable $SERVICES; }
+
+all(){ bootstrap
+ echo 'set -e; source /root/arch-install-scripts/install.sh;t imezone &&locale\
+  &&hostname &&ramdisk &&bootloader &&services' | arch-chroot /mnt/ /bin/bash -s; }
+
+HELP='Available options:
+help 
+bootstrap # Prepare for chroot.
+timezone
+locale
+ramdisk # Install initramfs.
+bootloader # Install bootloader.
+services # Enable init services.
+all # Call all options in this order.'
+
 while true; do
-	echo "$1"
-	case "$1" in
-		--help) echo 'Available options, if using multiple options, run in the followingo order:
---bootstrap	# Prepare for chroot.
---timezone
---locale
---hostname
----ramdisk	# Install initramfs.
---bootloader	# Install bootloader.
---services	# Enable init services.
---all		# Call all options in this order.'&&exit;;
-		--bootstrap) bootstrap && shfit ;;
-		--timezone) timezone && shfit ;;
-		--locale) locale && shfit ;;
-		--hostname) hostname && shfit ;;
-		--ramdisk) ramdisk && shfit ;;
-		--bootloader) bootloader && shfit ;;
-		--services) services && shfit ;;
-		--all) all && exit;;
-		--) shift;break;;
-		* ) break ;;
-	esac
-	shift
+ case "$1" in
+  help) echo "$HELP";;
+  bootstrap) bootstrap;;
+  timezone) timezone;;
+  locale) locale;;
+  hostname) hostname;;
+  ramdisk) ramdisk;;
+  bootloader) bootloader;;
+  services) services;;
+  all) all && exit 1;;
+  * ) exit;;
+ esac
+ shift
 done
